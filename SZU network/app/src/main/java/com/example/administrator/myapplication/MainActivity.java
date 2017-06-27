@@ -1,6 +1,7 @@
 package com.example.administrator.myapplication;
 
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -8,8 +9,11 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.webkit.WebView;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Spinner;
 
 import java.io.InputStreamReader;
 import java.io.Reader;
@@ -25,12 +29,15 @@ public class MainActivity extends AppCompatActivity {
     WebView web;
     Button button;
     EditText input;
+    Spinner spinner;
     String cookie;
     String url;
     String xuanke;
     String kechengbiao;
     String query;
     String QueryNum;
+    String query_encode;
+    int type;
 
     ArrayList<Integer> limit = new ArrayList<>();
     ArrayList<Integer> chosen = new ArrayList<>();
@@ -42,10 +49,13 @@ public class MainActivity extends AppCompatActivity {
         button = (Button) findViewById(R.id.send);
         input = (EditText) findViewById(R.id.input);
         input.setText("互联网");
+        spinner = (Spinner) findViewById(R.id.spinner);
         web = (WebView) findViewById(R.id.web);
         Intent intent = getIntent();
         cookie = intent.getStringExtra("cookie");
         url = intent.getStringExtra("url");
+        // 构造下拉菜单选项
+        setSpinner();
         //登陆成功显示页面
         String temp = "<h1 align=\"center\">登陆成功,欢迎!</h1>\n";
         web.getSettings().setDefaultTextEncodingName("UTF-8");//设置默认为utf-8
@@ -66,8 +76,9 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run() {
                         try {
-                            query = getRequest("/searchcourse.asp?querytype=2&course_no=" + URLEncoder.encode(QueryNum, "gb2312"));//QueryNum;
-                            Log.d("1", "encode: " + URLEncoder.encode(QueryNum, "gb2312"));
+                            query_encode = URLEncoder.encode(QueryNum, "gb2312");
+                            query = getRequest("/searchcourse.asp?querytype=" + type + "&course_no=" + query_encode);//QueryNum;
+                            Log.d("1", "encode: " + query_encode);
                         } catch (UnsupportedEncodingException e) {
                             e.printStackTrace();
                         }
@@ -115,8 +126,8 @@ public class MainActivity extends AppCompatActivity {
                         }
                         // 将每一行合并
                         String new_table = "";
-                        for (int i = 0; i < part.length; i++) {
-                            new_table += part[i];
+                        for (String aPart : part) {
+                            new_table += aPart;
                         }
                         query = new_table;
                         // 显示新设计好的表格
@@ -127,6 +138,12 @@ public class MainActivity extends AppCompatActivity {
                                 web.loadData(query, "text/html; charset=UTF-8", null);//这种写法可以正确解码
                             }
                         });
+                        // 储存查询信息
+                        SharedPreferences history = getSharedPreferences("history", MODE_PRIVATE);
+                        SharedPreferences.Editor editor = history.edit();
+                        editor.putInt("type", type);
+                        editor.putString("query string", query_encode);
+                        editor.apply();
                     }
                 }).start();
             }
@@ -154,11 +171,33 @@ public class MainActivity extends AppCompatActivity {
         }
         return true;
     }
-
+    // 创建菜单
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main, menu);
         return true;
+    }
+    // 创建下拉菜单选项
+    private void setSpinner() {
+        type = 0;
+        final String arr[]=new String[]{"课程编号", "课程名称", "主选班级"};
+        ArrayAdapter<String> arrayAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, arr);
+        spinner.setAdapter(arrayAdapter);
+        // 注册事件
+        spinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                Spinner spinner=(Spinner) parent;
+                if(spinner.getItemAtPosition(position)==arr[0])
+                    type = 1;
+                else if(spinner.getItemAtPosition(position)==arr[1])
+                    type = 2;
+                else if(spinner.getItemAtPosition(position)==arr[2])
+                    type = 4;
+            }
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) { }
+        });
     }
 
     // 获得相应课程的人数信息
