@@ -2,18 +2,22 @@ package com.example.administrator.myapplication;
 
 import android.Manifest;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Looper;
 import android.support.annotation.NonNull;
+import android.support.annotation.RequiresApi;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -38,34 +42,47 @@ public class LoginActivity extends AppCompatActivity {
     EditText text2;
     EditText text3;
     TextView text;
+    CheckBox remember;
     String stu_no = "";
     String passwd = "";
     String GetCode = "";
-    String code = "";
     String cookie1 = "";
     String cookie2 = "";
     String htmlbuffer = "";
     String url = "http://192.168.240.168/xuanke";
     File file;
 
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.login_layout);
         button = (Button) findViewById(R.id.button);
         text1 = (EditText) findViewById(R.id.username);
-        text1.setText("2015150285");
+        text1.setText("");  // 2015150285
         text2 = (EditText) findViewById(R.id.passwd);
-        text2.setText("030821");
+        text2.setText("");  // 030821
         text3 = (EditText) findViewById(R.id.code);
         CodeImg = (ImageView) findViewById(R.id.image);
         text = (TextView) findViewById(R.id.text);
+        remember = (CheckBox) findViewById(R.id.remember_pass);
 
         // 申请运行时权限
         if (ContextCompat.checkSelfPermission(LoginActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
                 != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(LoginActivity.this,
                     new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE, Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
+        }
+
+        // 自动填充已保存的账号和密码
+        final SharedPreferences save = getSharedPreferences("data", MODE_PRIVATE);
+        String account = save.getString("account", "");
+        String password = save.getString("password", "");
+        if (!"".equals(account)) {
+            text1.setText(account);  // 2015150285
+            text2.setText(password);  // 030821
+            // 自动勾选保存密码选项
+            remember.setChecked(true);
         }
 
         new Thread(new Runnable() {
@@ -81,12 +98,24 @@ public class LoginActivity extends AppCompatActivity {
                 Log.d("1", "run: " + cookie1);
                 //获取验证码
                 getImg();
-
             }
         }).start();
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                // 获取输入框信息
+                stu_no = text1.getText().toString();
+                passwd = text2.getText().toString();
+                GetCode = text3.getText().toString();
+                // 检查保存密码的勾选状态
+                SharedPreferences.Editor editor = save.edit();
+                if (remember.isChecked()) {
+                    editor.putString("account", stu_no);
+                    editor.putString("password", passwd);
+                } else {
+                    editor.clear();
+                }
+                editor.apply();
                 //post登陆
                 Post();
                 //登陆成功后获取选课信息
@@ -119,9 +148,6 @@ public class LoginActivity extends AppCompatActivity {
                 try {
                     String PostAdd = url + "/entrance1.asp";
                     URL u = new URL(PostAdd);
-                    stu_no = text1.getText().toString();
-                    passwd = text2.getText().toString();
-                    GetCode = text3.getText().toString();
                     //post
                     String sendstr = "stu_no=" + stu_no + "&passwd=" + passwd + "&GetCode=" + GetCode;
                     Log.d("1", "run: " + stu_no + " " + passwd + " " + GetCode);
@@ -168,20 +194,6 @@ public class LoginActivity extends AppCompatActivity {
                     }
                     Looper.loop();
                     Log.d("1", "run: " + htmlbuffer);
-//                        text.setText(htmlbuffer);
-
-                    //接收响应
-
-//                File file = new File("D:\\程序编程\\互联网编程\\大作业\\test.html");
-//                PrintWriter output = new PrintWriter(file);
-
-//
-//                output.print(htmlbuffer);
-//                output.flush();
-//                output.close();
-//			System.out.println(str);
-
-//			redirect(htmlbuffer);
                 } catch (IOException e) {
                     // TODO Auto-generated catch block
                     e.printStackTrace();
