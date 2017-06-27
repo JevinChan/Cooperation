@@ -32,8 +32,8 @@ public class MainActivity extends AppCompatActivity {
     String query;
     String QueryNum;
 
-    ArrayList<String> limit = new ArrayList<>();
-    ArrayList<String> chosen = new ArrayList<>();
+    ArrayList<Integer> limit = new ArrayList<>();
+    ArrayList<Integer> chosen = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,8 +65,6 @@ public class MainActivity extends AppCompatActivity {
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
-//                        query = getRequest("/sele_count1.asp?course_no=" + QueryNum);
-//                        query = getRequest("/searchcourse.asp?querytype=2&course_no=" + "%BB%A5%C1%AA%CD%F8");//QueryNum;
                         try {
                             query = getRequest("/searchcourse.asp?querytype=2&course_no=" + URLEncoder.encode(QueryNum, "gb2312"));//QueryNum;
                             Log.d("1", "encode: " + URLEncoder.encode(QueryNum, "gb2312"));
@@ -74,11 +72,10 @@ public class MainActivity extends AppCompatActivity {
                             e.printStackTrace();
                         }
                         // 过滤无关信息，改造表格
-                        query = query.replaceAll("备注</td></tr>","备注</td><td>限制数</td><td>已选数</td></tr>");
+                        query = query.replaceAll("备注</td></tr>", "备注</td><td>限制数</td><td>已选数</td></tr>");
                         query = query.replaceAll("<td>选课<br>人数</td>", "");
-                        query = query.replaceAll("<td><img [\\w\\W]{0,140}></td>","</td>");
+                        query = query.replaceAll("<td><img [\\w\\W]{0,140}></td>", "</td>");
                         Log.d("1", "run: " + query);
-// 互联网
                         // 查找对应课程的人数
                         String regex = "<td>([a-zA-z0-9]{2,})</td>"; // 课程编号(考虑MOOC的情况，前面有MC两个字母)
                         Pattern pattern = Pattern.compile(regex);
@@ -93,26 +90,36 @@ public class MainActivity extends AppCompatActivity {
                             Pattern pattern1 = Pattern.compile(num_regex);
                             Matcher matcher1 = pattern1.matcher(num_status);
                             while (matcher1.find()) {
-                                limit.add(matcher1.group(1));
-                                chosen.add(matcher1.group(2));
-                                Log.d("1", "limit num: " + matcher1.group(1));
-                                Log.d("1", "chosen num: " + matcher1.group(2));
+                                int limit_num = Integer.parseInt(matcher1.group(1));
+                                int chosen_num = Integer.parseInt(matcher1.group(2));
+                                limit.add(limit_num);
+                                chosen.add(chosen_num);
+                                Log.d("1", "limit num: " + limit_num);
+                                Log.d("1", "chosen num: " + chosen_num);
                             }
                         }
-                        // 将获得的限制人数和已选人数的数据添加到表格
-                        int size = limit.size();
-                            String[] part = query.split("</tr>");
-                            for (String temp : part)
-                                Log.d("1", "part: " + temp);
-                        for (int i=1; i<part.length-1; i++) {
-                            part[i] += "<td>" + limit.get(i-1) + "</td><td>" + chosen.get(i-1) + "</td></tr>";
+                        /* 将获得的限制人数和已选人数的数据添加到表格 */
+                        // 分割表格的每一行
+                        String[] part = query.split("</tr>");
+                        for (String temp : part)
+                            Log.d("1", "part: " + temp);
+                        // 将人数信息添加到每一行末尾
+                        for (int i = 1; i < part.length - 1; i++) {
+                            int limit_num = limit.get(i - 1);
+                            int chosen_num = chosen.get(i - 1);
+                            part[i] += "<td>" + limit_num + "</td><td>" + chosen_num + "</td></tr>";
+                            // 高亮显示可选课程
+                            if (chosen_num < limit_num) {
+                                part[i] = part[i].replaceAll("<tr>", "<tr bgcolor=\"yellow\">");
+                            }
                         }
+                        // 将每一行合并
                         String new_table = "";
-                        for (int i=0; i<part.length; i++) {
+                        for (int i = 0; i < part.length; i++) {
                             new_table += part[i];
                         }
                         query = new_table;
-
+                        // 显示新设计好的表格
                         web.post(new Runnable() {
                             @Override
                             public void run() {
